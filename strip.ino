@@ -1,74 +1,101 @@
-// NeoPixel Ring simple sketch (c) 2013 Shae Erisson
-// released under the GPLv3 license to match the rest of the AdaFruit NeoPixel library
-
 #include <Adafruit_NeoPixel.h>
+#include <math.h>
 #ifdef __AVR__
 #include <avr/power.h>
 #endif
 
-// Which pin on the Arduino is connected to the NeoPixels?
-// On a Trinket or Gemma we suggest changing this to 1
 #define PIN            6
-
-// How many NeoPixels are attached to the Arduino?
 #define NUMPIXELS     20
+#define DELAYVAL      250
 
-// When we setup the NeoPixel library, we tell it how many pixels, and which pin to use to send signals.
-// Note that for older NeoPixel strips you might need to change the third parameter--see the strandtest
-// example for more information on possible values.
+/* choose brightness of LEDS
+ * =========================
+  Examples: 0   = off
+            50  = 50% brightness
+            100 = full brightness */
+#define BRIGHTNESS    20
+
+
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
-int delayval = 250; // delay for half a second
-float total;
-float totalPixels;
+float brightness = BRIGHTNESS;
+int color = brightness / 100.00 * 255;
+float totalNew;
+float totalOldPixel;
+float totalNewPixel;
+float change;
+
 
 void setup() {
   Serial.begin(9600);
-  pixels.begin(); // This initializes the NeoPixel library.
-//  for (int i = 0; i < NUMPIXELS; i++) {
-//    pixels.setPixelColor(i, pixels.Color(0, 0, 0));
-//    pixels.show();
-//    delay(0);
-//  };
-}
+  pixels.begin();
 
-void loop() {
-  if (Serial.available() > 0) {
-
-    total = getTotal();
-    Serial.print("total = ");
-    Serial.println(total);
-
-    totalPixels = total / 100;
-    Serial.print("totalPixels = ");
-    Serial.println(totalPixels);
-
-    if (totalPixels < 1) {
-      pixels.setPixelColor(0, pixels.Color(255, 0, 0));
-      pixels.show();
-    }
-    // For a set of NeoPixels the first NeoPixel is 0, second is 1, all the way up to the count of pixels minus one.
-    else {
-      for (int i = 0; i < totalPixels; i++) {
-        pixels.setPixelColor(i, pixels.Color(255, 255, 255));
-        pixels.show();
-        delay(delayval);
-      };
-    };
-
+  // little light show to let users know this is working
+  for (int i = 0; i < 2; i++) {
+    pixels.setPixelColor(0, pixels.Color(random(0, 255), random(0, 255), random(0, 255)));
+    pixels.show();
+    delay(DELAYVAL);
   };
 };
 
-int getTotal() {
-  float inFlt;
-  inFlt = Serial.parseFloat();
-  if (inFlt > 2000) {
+
+void loop() {
+
+  if (Serial.available() > 1) {
+
+    totalNew = getDisplayTotal();
+    totalNewPixel = truncateToPixel(totalNew);
+    change = totalNewPixel - totalOldPixel;
+
+    // if funds decreasing, turn off lights
+    if (change < 0) {
+      for (int i = totalOldPixel; i >= totalNewPixel; i--) {
+        pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+        pixels.show();
+        delay(DELAYVAL);
+      };
+    }
+
+    // if funds increasing, turn on lights
+    else if (change > 0) {
+      for (int i = totalOldPixel; i < totalNewPixel; i++) {
+        pixels.setPixelColor(i, pixels.Color(color, color, color));
+        pixels.show();
+        delay(DELAYVAL);
+      };
+    };
+
+
+    // if funds are empty, turn first light red
+    if (totalNew <= 0) {
+      pixels.setPixelColor(0, pixels.Color(color, 0, 0));
+      pixels.show();
+    }
+    
+    // if funds are less than $100, turn first light yellow
+    else if (totalNew < 100) {
+      pixels.setPixelColor(0, pixels.Color(color, color, 0));
+      pixels.show();
+    };
+
+    totalOldPixel = totalNewPixel;
+  };
+};
+
+float getDisplayTotal() {
+  float incoming;
+  incoming = Serial.parseFloat();
+  if (incoming > 2000) {
     return 2000.00;
   }
-  else if (inFlt < 0) {
+  else if (incoming < 0) {
     return 0.00;
   }
   else {
-    return inFlt;
+    return incoming;
   };
+};
+
+int truncateToPixel(float x) {
+  return trunc(x / 100);
 };
