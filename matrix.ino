@@ -17,6 +17,8 @@ String total;
 String displayTotal;
 int displayLength;
 int hortizontalStart;
+int hue = 0;
+boolean positive;
 
 void setup() {
   Serial.begin(9600);     // opens serial port, sets data rate to 9600 bps
@@ -30,28 +32,33 @@ void setup() {
 void loop() {
   if (Serial.available() > 0) {
     total = getTotal();
-    Serial.println(total);
-    displayTotal = getDisplayTotal(total);
+    positive = isPositive(total);
+    displayTotal = getDisplayTotal(total, positive);
     displayLength = getDisplayLength(displayTotal);
 
     // clear screen and set cursor
     matrix.fillScreen(matrix.Color333(0, 0, 0));
-    hortizontalStart = (4 - displayLength) * 6.6 + 2;
-    matrix.setCursor(hortizontalStart, 19);
+
+    if (positive) {
+      hortizontalStart = (4 - displayLength) * 6.6 + 2;
+    }
+    else {
+      hortizontalStart = (4 - displayLength) * 6.6 + 5;
+    };
+
+    matrix.setCursor(hortizontalStart, 28);
 
     matrix.print('$');
     matrix.print(displayTotal[0]);
 
     // change to sans for comma
-    if (displayLength == 4) {
+    if (displayLength == 4 && positive == true) {
       matrix.setFont(&FreeSans9pt7b);
       matrix.print(",");
       matrix.setFont(&FreeMono9pt7b);
     };
 
-    matrix.print(displayTotal[1]);
-    matrix.print(displayTotal[2]);
-    matrix.print(displayTotal[3]);
+    matrix.print(displayTotal.substring(1));
   };
 };
 
@@ -62,11 +69,23 @@ String getTotal() {
   return incomingTotal;
 }
 
-String getDisplayTotal(String rawTotal) {
+boolean isPositive(String y) {
+  if (y[0] == '-') {
+    return false;
+  }
+  else {
+    return false;
+  };
+};
+
+String getDisplayTotal(String rawTotal, boolean pos) {
   int digits = 0;
   digits = rawTotal.length();
-  if (digits > 4) {
+  if (pos && digits > 4) {
     return "9999";
+  }
+  else if (digits > 4) {
+    return "-999";
   }
   else {
     return rawTotal;
